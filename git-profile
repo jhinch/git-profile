@@ -23,6 +23,9 @@ function main() {
         current)
             cmd_current "$@"
             ;;
+        config)
+            cmd_config "$@"
+            ;;
         *)
             raise_error "'$subcmd' is not a git profile subcommand. See git profile --help"
             ;;
@@ -253,6 +256,24 @@ function validate_profile() {
     if ! git config --file ~/.git-profile/"$profile_name" --get profile.name "$profile_name" > /dev/null; then
         raise_error "Invalid profile $profile_name"
     fi
+}
+
+function cmd_config() {
+    local profile_name="$1"
+    shift
+    validate_profile "$profile_name"
+
+    for argument in "$@"; do
+        case "$argument" in
+            --file|--local|--global|--system|--worktree)
+                raise_error "Invalid argument $argument"
+                ;;
+            *)
+                ;;
+        esac
+    done
+
+    git config --file ~/.git-profile/"$profile_name" "$@"
 }
 
 main "$@"
