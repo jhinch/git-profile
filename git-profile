@@ -20,8 +20,8 @@ function main() {
         add)
             cmd_add "$@"
             ;;
-        remove)
-            cmd_remove "$@"
+        current)
+            cmd_current "$@"
             ;;
         *)
             raise_error "'$subcmd' is not a git profile subcommand. See git profile --help"
@@ -54,7 +54,7 @@ function cmd_init() {
     ensure_git_profile_config
     ensure_include_path
 
-    echo "Initalized $EXECUTABLE configuration at ~/.git-profile/"
+    echo "Initialized profile configuration at ~/.git-profile/"
 }
 
 function ensure_git_profile_directory() {
@@ -67,6 +67,7 @@ function ensure_git_profile_config() {
     # test for both regular files and symbolic links
     if ! [ -f ~/.git-profile/.config -o -L ~/.git-profile/.config ]; then
         touch ~/.git-profile/.config
+        git config --file ~/.git-profile/.config include.path "~~/.git-profile/default"
     fi
 }
 
@@ -98,7 +99,7 @@ function cmd_list() {
     done
 
     if [ -d ~/.git-profile ]; then
-        ls ~/.git-profile
+        ls -1 ~/.git-profile
     else
         raise_error "Run git profile has not been initialized. Run 'git profile init'"
     fi
@@ -160,6 +161,7 @@ function cmd_add() {
     fi
 
     touch ~/.git-profile/"$profile_name"
+    git config --file ~/.git-profile/"$profile_name" profile.name "$profile_name"
 
     if [ -n "$user_name" ]; then
         git config --file ~/.git-profile/"$profile_name" user.name "$user_name"
@@ -172,8 +174,85 @@ function cmd_add() {
     echo "Created profile '$profile_name'" 
 }
 
-function cmd_remove() {
-    echo "TODO: Implement remove"
+function cmd_current() {
+    local new_profile_name=""
+    local is_set=0
+    # 0 = repository, 1 = directory, 2 = default
+    local set_mode=0
+    while [ $# -ne 0 ]; do
+        case "$1" in
+            --subdirectory|-s)
+                is_set=1
+                set_mode=1
+                ;;
+            --default|-d)
+                is_set=1
+                set_mode=2
+                ;;
+            *)
+                if [ -z "$new_profile_name" ]; then
+                    new_profile_name="$1"
+                    is_set=1
+                else
+                    raise_error "Unexpected argument $1"
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    if [ $is_set -eq 1 ]; then
+        if [ $set_mode -eq 1 ]; then
+            set_current_profile_in_directory "$new_profile_name"
+        elif [ $set_mode -eq 2 ]; then
+            set_current_profile_default "$new_profile_name"
+        else
+            set_current_profile_in_repository "$new_profile_name"
+        fi
+    else
+        get_current_profile
+    fi
+}
+
+function get_current_profile() {
+    git config --get profile.name
+}
+
+function set_current_profile_in_repository() {
+    local new_profile_name="$1"
+    validate_profile "$new_profile_name"
+
+    git config --local include.path "~/.git-profile/$new_profile_name"
+}
+
+function set_current_profile_in_directory() {
+    local new_profile_name="$1"
+    validate_profile "$new_profile_name"
+
+    local current_dir="$PWD/"
+    if [ "${current_dir#"$HOME"}" != "$current_dir" ]; then
+        current_dir="~${current_dir#"$HOME"}"
+    fi
+    
+    git config --file  ~/.git-profile/.config includeIf."gitdir/i:$current_dir".path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
+}
+
+function set_current_profile_default() {
+    local new_profile_name="$1"
+    validate_profile "$new_profile_name"
+
+    git config --file  ~/.git-profile/.config include.path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
+}
+
+function validate_profile() {
+    local profile_name="$1"
+
+    if [ -z "$profile_name" ]; then
+        raise_eror "Expected profile"
+    fi
+    if ! git config --file ~/.git-profile/"$profile_name" --get profile.name "$profile_name" > /dev/null; then
+        raise_error "Invalid profile $profile_name"
+    fi
 }
 
 main "$@"

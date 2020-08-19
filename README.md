@@ -18,6 +18,10 @@ This is how it should work:
     # Create a profile
     git profile add <profile-name>
 
+    # Set the current profile
+    git profile current <profile-name>
+    # or using --subdirectory or --default
+
     # Get/Modify the configuration for a profile
     git profile config <profile-name> ...
 
