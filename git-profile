@@ -61,16 +61,17 @@ function cmd_init() {
 }
 
 function ensure_git_profile_directory() {
-    if ! [ -d ~/.git-profile -o -L ~/.git-profile ]; then
+    if ! { [ -d ~/.git-profile ] || [ -L ~/.git-profile ] ; }; then
         mkdir ~/.git-profile
     fi
 }
 
 function ensure_git_profile_config() {
     # test for both regular files and symbolic links
-    if ! [ -f ~/.git-profile/.config -o -L ~/.git-profile/.config ]; then
+    if ! { [ -f ~/.git-profile/.config ] || [ -L ~/.git-profile/.config ] ; }; then
         touch ~/.git-profile/.config
-        git config --file ~/.git-profile/.config include.path "~~/.git-profile/default"
+        # shellcheck disable=SC2088
+        git config --file ~/.git-profile/.config include.path "~/.git-profile/default"
     fi
 }
 
@@ -159,8 +160,8 @@ function cmd_add() {
     fi
 
     if [ $user_prompt_required -eq 1 ]; then
-        read -p 'User name: ' user_name
-        read -p 'User email: ' user_email
+        read -r -p 'User name: ' user_name
+        read -r -p 'User email: ' user_email
     fi
 
     touch ~/.git-profile/"$profile_name"
@@ -225,6 +226,7 @@ function set_current_profile_in_repository() {
     local new_profile_name="$1"
     validate_profile "$new_profile_name"
 
+    # shellcheck disable=SC2088
     git config --local include.path "~/.git-profile/$new_profile_name"
 }
 
@@ -236,7 +238,8 @@ function set_current_profile_in_directory() {
     if [ "${current_dir#"$HOME"}" != "$current_dir" ]; then
         current_dir="~${current_dir#"$HOME"}"
     fi
-    
+   
+    # shellcheck disable=SC2088
     git config --file  ~/.git-profile/.config includeIf."gitdir/i:$current_dir".path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
 }
 
@@ -244,6 +247,7 @@ function set_current_profile_default() {
     local new_profile_name="$1"
     validate_profile "$new_profile_name"
 
+    # shellcheck disable=SC2088
     git config --file  ~/.git-profile/.config include.path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
 }
 

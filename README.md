@@ -1,3 +1,5 @@
+![CI](https://github.com/jhinch/git-profile/workflows/CI/badge.svg)
+
 # `git-profile`
 
 A git extension for managing multiple profiles. The extension is under active
