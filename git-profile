@@ -1,0 +1,179 @@
+#!/bin/bash -e
+
+readonly EXECUTABLE="$(basename "$0")"
+
+function main() {
+    local subcmd="list"
+
+    if [ $# -ne 0 ]; then
+        subcmd="$1"
+        shift
+    fi
+
+    case "$subcmd" in
+        init)
+            cmd_init "$@"
+            ;;
+        list)
+            cmd_list "$@"
+            ;;
+        add)
+            cmd_add "$@"
+            ;;
+        remove)
+            cmd_remove "$@"
+            ;;
+        *)
+            raise_error "'$subcmd' is not a git profile subcommand. See git profile --help"
+            ;;
+    esac
+}
+
+function echo_err() {
+    echo "$@" >&2
+}
+
+function raise_error() {
+    local message="$1"
+
+    echo_err "$EXECUTABLE: $message"
+    exit 1
+}
+
+function cmd_init() {
+    while [ $# -ne 0 ]; do
+        case "$1" in
+            *)
+                raise_error "Unexpected argument $1"
+                ;;
+        esac
+        shift
+    done
+
+    ensure_git_profile_directory
+    ensure_git_profile_config
+    ensure_include_path
+
+    echo "Initalized $EXECUTABLE configuration at ~/.git-profile/"
+}
+
+function ensure_git_profile_directory() {
+    if ! [ -d ~/.git-profile -o -L ~/.git-profile ]; then
+        mkdir ~/.git-profile
+    fi
+}
+
+function ensure_git_profile_config() {
+    # test for both regular files and symbolic links
+    if ! [ -f ~/.git-profile/.config -o -L ~/.git-profile/.config ]; then
+        touch ~/.git-profile/.config
+    fi
+}
+
+function ensure_include_path() {
+    local initialized=0
+
+    while IFS= read -r -d $'\0' include_path; do
+        # shellcheck disable=SC2088
+        if [ "$include_path" = "~/.git-profile/.config" ]; then
+            initialized=1
+            break
+        fi
+    done < <(git config --global --get-all --null include.path)
+
+    if [ $initialized -eq 0 ]; then
+        # shellcheck disable=SC2088
+        git config --global --no-includes --add include.path "~/.git-profile/.config"
+    fi
+}
+
+function cmd_list() {
+    while [ $# -ne 0 ]; do
+        case "$1" in
+            *)
+                raise_error "Unexpected argument $1"
+                ;;
+        esac
+        shift
+    done
+
+    if [ -d ~/.git-profile ]; then
+        ls ~/.git-profile
+    else
+        raise_error "Run git profile has not been initialized. Run 'git profile init'"
+    fi
+}
+
+function cmd_add() {
+    local profile_name=""
+    local user_name=""
+    local user_email=""
+    local user_prompt_required=1
+
+    while [ $# -ne 0 ]; do
+        case "$1" in
+            --user|-u)
+                if [ -z "$2" ]; then
+                    raise_error "Expected user"
+                fi
+                case "$2" in
+                    *" <"*">")
+                        # Display Name <email@address>
+                        user_name="${2% <*}"
+                        user_email="${2#"$user_name <"}"
+                        user_email="${user_email%>}"
+                        ;;
+                    *"@"*)
+                        # email@address
+                        user_email="$2"
+                        ;;
+                    *)
+                        # Display Name
+                        user_name="$2"
+                        ;;
+                esac
+                user_prompt_required=0
+                shift
+                ;;
+            *)
+                if [ -z "$profile_name" ]; then
+                    profile_name="$1"
+                else
+                    raise_error "Unexpected argument $1"
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    if [ -z "$profile_name" ]; then
+        raise_error "Expected <profile>"
+    fi
+
+    if [ -f ~/.git-profile/"$profile_name" ]; then
+        raise_error "Profile '$profile_name' already exists"
+    fi
+
+    if [ $user_prompt_required -eq 1 ]; then
+        read -p 'User name: ' user_name
+        read -p 'User email: ' user_email
+    fi
+
+    touch ~/.git-profile/"$profile_name"
+
+    if [ -n "$user_name" ]; then
+        git config --file ~/.git-profile/"$profile_name" user.name "$user_name"
+    fi
+
+    if [ -n "$user_email" ]; then
+        git config --file ~/.git-profile/"$profile_name" user.email "$user_email"
+    fi
+
+    echo "Created profile '$profile_name'" 
+}
+
+function cmd_remove() {
+    echo "TODO: Implement remove"
+}
+
+main "$@"
