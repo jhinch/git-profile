@@ -26,8 +26,11 @@ function main() {
         config)
             cmd_config "$@"
             ;;
+        help)
+            cmd_help
+            ;;
         *)
-            raise_error "'$subcmd' is not a git profile subcommand. See git profile --help"
+            raise_error "'$subcmd' is not a git profile subcommand. See git profile help"
             ;;
     esac
 }
@@ -46,6 +49,10 @@ function raise_error() {
 function cmd_init() {
     while [ $# -ne 0 ]; do
         case "$1" in
+            --help)
+                cmd_help "init"
+                exit 128
+                ;;
             *)
                 raise_error "Unexpected argument $1"
                 ;;
@@ -95,6 +102,10 @@ function ensure_include_path() {
 function cmd_list() {
     while [ $# -ne 0 ]; do
         case "$1" in
+            --help)
+                cmd_help "list"
+                exit 128
+                ;;
             *)
                 raise_error "Unexpected argument $1"
                 ;;
@@ -117,6 +128,10 @@ function cmd_add() {
 
     while [ $# -ne 0 ]; do
         case "$1" in
+            --help)
+                cmd_help "add"
+                exit 128
+                ;;
             --user|-u)
                 if [ -z "$2" ]; then
                     raise_error "Expected user"
@@ -181,15 +196,23 @@ function cmd_add() {
 function cmd_current() {
     local new_profile_name=""
     local is_set=0
-    # 0 = repository, 1 = directory, 2 = default
+    # 0 = repository, 1 = directory, 2 = global
     local set_mode=0
     while [ $# -ne 0 ]; do
         case "$1" in
+            --help)
+                cmd_help "current"
+                exit 128
+                ;;
+            --local|-l)
+                is_set=1
+                set_mode=0
+                ;;
             --subdirectory|-s)
                 is_set=1
                 set_mode=1
                 ;;
-            --default|-d)
+            --global|-g)
                 is_set=1
                 set_mode=2
                 ;;
@@ -263,6 +286,14 @@ function validate_profile() {
 }
 
 function cmd_config() {
+    for argument in "$@"; do
+        case "$argument" in
+            --help)
+                cmd_help "config"
+                exit 128
+                ;;
+        esac
+    done
     local profile_name="$1"
     shift
     validate_profile "$profile_name"
@@ -278,6 +309,71 @@ function cmd_config() {
     done
 
     git config --file ~/.git-profile/"$profile_name" "$@"
+}
+
+function cmd_help() {
+    local subcmd="$1"
+    case "$subcmd" in
+        list)
+            echo -e "usage: git profile list [<options>]"
+            echo
+            echo -e "List the profiles currently available"
+            echo
+            echo -e "Options"
+            echo -e "\t--help\tDisplay this help message"
+            echo
+            ;;
+        init)
+            echo -e "usage: git profile init [<options>]"
+            echo
+            echo -e "Initialize the configuration for git-profile"
+            echo
+            echo -e "Options"
+            echo -e "\t--help\tDisplay this help message"
+            echo
+            ;;
+        add)
+            echo -e "usage: git profile add [<otions>] <name>"
+            echo
+            echo -e "Add a new profile with the given name"
+            echo
+            echo -e "Options"
+            echo -e "\t-u, --user <user>\tSet the user name for the new profile."
+            echo -e "\t                 \tIf not specified, an interactive prompt will be used"
+            echo -e "\t--help           \tDisplay this help message"
+            echo
+            ;;
+        current)
+            echo -e "usage: git profile current [<options>] [<name>]"
+            echo
+            echo -e "Set the profile for the repository/subdirectory/default. If no profile name is given, return the current effective profile for repository"
+            echo
+            echo -e "Options"
+            echo -e "\t-l, --local       \tSet the profile for the repository in the current working directory. This is the default"
+            echo -e "\t-s, --subdirectory\tSet the profile for all subdirectories of the current working directory"
+            echo -e "\t-g, --global      \tSet the default profile"
+            echo -e "\t--help\tDisplay this help message"
+            echo
+            ;;
+        config)
+            echo -e "usage: git profile config <name> ..."
+            echo
+            echo -e "Get or set configuration for the specified profile. See git config help for more details"
+            echo
+            echo -e "Options"
+            echo -e "\t--help\tDisplay this help message"
+            echo
+            ;;
+        *)
+            echo -e "usage: git profile [list]"
+            echo -e "   or: git profile init"
+            echo -e "   or: git profile add [ -u <user> | --user <user> ] <name>"
+            echo -e "   or: git profile current [ -s | --subdirectory | -d | --default ] [<name>]"
+            echo -e "   or: git profile config <name> ..."
+            echo -e "   or: git profile help"
+            echo
+            ;;
+    esac
 }
 
 main "$@"
