@@ -29,7 +29,7 @@ function main() {
             cmd_config "$@"
             ;;
         help)
-            cmd_help
+            cmd_help "$@"
             ;;
         *)
             raise_error "'$subcmd' is not a git profile subcommand. See git profile help"
@@ -118,7 +118,7 @@ function cmd_list() {
     if [ -d ~/.git-profile ]; then
         ls -1 ~/.git-profile
     else
-        raise_error "Run git profile has not been initialized. Run 'git profile init'"
+        raise_error "git profile has not been initialized. Run 'git profile init'"
     fi
 }
 
@@ -192,7 +192,7 @@ function cmd_add() {
         git config --file ~/.git-profile/"$profile_name" user.email "$user_email"
     fi
 
-    echo "Created profile '$profile_name'" 
+    echo "Created profile '$profile_name'"
 }
 
 function cmd_current() {
@@ -252,7 +252,7 @@ function set_current_profile_in_repository() {
     validate_profile "$new_profile_name"
 
     # shellcheck disable=SC2088
-    git config --local include.path "~/.git-profile/$new_profile_name"
+    git config --local include.path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
 }
 
 function set_current_profile_in_directory() {
@@ -263,9 +263,9 @@ function set_current_profile_in_directory() {
     if [ "${current_dir#"$HOME"}" != "$current_dir" ]; then
         current_dir="~${current_dir#"$HOME"}"
     fi
-   
+
     # shellcheck disable=SC2088
-    git config --file  ~/.git-profile/.config includeIf."gitdir/i:$current_dir".path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
+    git config --file ~/.git-profile/.config includeIf."gitdir/i:$current_dir".path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
 }
 
 function set_current_profile_default() {
@@ -273,14 +273,14 @@ function set_current_profile_default() {
     validate_profile "$new_profile_name"
 
     # shellcheck disable=SC2088
-    git config --file  ~/.git-profile/.config include.path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
+    git config --file ~/.git-profile/.config include.path "~/.git-profile/$new_profile_name" "~/\.git-profile/[^/]+"
 }
 
 function validate_profile() {
     local profile_name="$1"
 
     if [ -z "$profile_name" ]; then
-        raise_eror "Expected profile"
+        raise_error "Expected profile"
     fi
     if ! git config --file ~/.git-profile/"$profile_name" --get profile.name "$profile_name" > /dev/null; then
         raise_error "Invalid profile $profile_name"
@@ -296,13 +296,16 @@ function cmd_config() {
                 ;;
         esac
     done
+    if [ $# -eq 0 ]; then
+        raise_error "Expected profile"
+    fi
     local profile_name="$1"
     shift
     validate_profile "$profile_name"
 
     for argument in "$@"; do
         case "$argument" in
-            --file|--local|--global|--system|--worktree)
+            --file|-f|--blob|--local|--global|--system|--worktree)
                 raise_error "Invalid argument $argument"
                 ;;
             *)
@@ -335,7 +338,7 @@ function cmd_help() {
             echo
             ;;
         add)
-            echo -e "usage: git profile add [<otions>] <name>"
+            echo -e "usage: git profile add [<options>] <name>"
             echo
             echo -e "Add a new profile with the given name"
             echo
@@ -370,7 +373,7 @@ function cmd_help() {
             echo -e "usage: git profile [list]"
             echo -e "   or: git profile init"
             echo -e "   or: git profile add [ -u <user> | --user <user> ] <name>"
-            echo -e "   or: git profile current [ -s | --subdirectory | -d | --default ] [<name>]"
+            echo -e "   or: git profile current [ -l | --local | -s | --subdirectory | -g | --global ] [<name>]"
             echo -e "   or: git profile config <name> ..."
             echo -e "   or: git profile help"
             echo
