@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+# shellcheck disable=SC2155 # If `basename` fails to run successfully, its fine, it just will result in badly formatted usage messages
 readonly EXECUTABLE="$(basename "$0")"
 
 function main() {
