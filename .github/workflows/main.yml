@@ -21,6 +21,6 @@ jobs:
     - uses: actions/checkout@v2
     # Run shellcheck against git-profile
     - name: Run Shellcheck
-      uses: azohra/shell-linter@latest
+      uses: Azbagheri/shell-linter@latest
       with:
         path: git-profile
